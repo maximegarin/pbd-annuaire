@@ -170,9 +170,9 @@ Le projet est documenté pour **3 publics distincts** :
 
 | Annuaire (grille filtrable) | Fiche pro (desktop) | Fiche pro (mobile) |
 | --- | --- | --- |
-| ![Grille]<img width="1900" height="917" alt="image" src="https://github.com/user-attachments/assets/45174eb5-0c13-4967-99b9-164d1ef8623a" />
-) | ![Fiche]<img width="1899" height="916" alt="image" src="https://github.com/user-attachments/assets/2cebb9f5-dfd3-4f76-ad8b-d62e6c0fd2cd" />
- | ![Mobile]<img width="262" height="466" alt="image" src="https://github.com/user-attachments/assets/202934c9-564b-4155-a2e3-72efee70c162" />
+<img width="1900" height="917" alt="image" src="https://github.com/user-attachments/assets/45174eb5-0c13-4967-99b9-164d1ef8623a" />
+<img width="1899" height="916" alt="image" src="https://github.com/user-attachments/assets/2cebb9f5-dfd3-4f76-ad8b-d62e6c0fd2cd" />
+<img width="262" height="466" alt="image" src="https://github.com/user-attachments/assets/202934c9-564b-4155-a2e3-72efee70c162" />
  |
 
 ---
