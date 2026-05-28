@@ -181,4 +181,4 @@ Le projet est documenté pour **3 publics distincts** :
 
 **Maxime Garin** — [github.com/maximegarin](https://github.com/maximegarin)
 
-Développé en autonomie pendant ma formation Titre Pro Développeur Web (AFEC Bayonne, 2024–2026), en mobilisant mon double profil designer + développeur.
+Développé en autonomie pendant mon stage chez Pays Basque Digital de 10 semaines dans le cadre de ma formation Titre Pro Développeur Web (AFEC Bayonne, 2024–2026).
