@@ -178,7 +178,7 @@ Gain : ~130 Ko de Material Icons + Font Awesome → ~5 Ko de SVG inline.
 
 3. **Cache et orderby=rand** — le `rand` est gelé pendant 1h (tant que le transient existe). Trade-off accepté pour la perf.
 
-4. **Injection dans `<main>` (snippet 05)** — le thème custom n'appelle pas `the_content()` sur les singles CPT. On injecte via JS en fallback. Fragile si le thème change.
+4. **Injection dans `<main>` (snippet 05)** — le thème custom n'appelle pas `the_content()` sur les singles CPT.
 
 5. **OMGF intercept des fonts** — les `wp_enqueue_style('syne-font', 'https://fonts.googleapis.com/…')` sont réécrits côté serveur. Si OMGF désinstallé : les fonts repartent vers Google → fail RGPD. Vérifier après chaque upgrade WP.
 
