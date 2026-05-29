@@ -117,7 +117,6 @@ Le thème custom n'appelle pas `the_content()` sur les CPT : la fiche est rendue
 
 Une attention particulière a été portée au *first paint* sur Chrome/Safari mobile, sensible sur les fiches à cover lourde. La cover est traitée comme image LCP :
 - servie en `<img>` (et non `background-image`) avec `fetchpriority="high"` + `<link rel="preload">` + `width/height` (anti-CLS) ;
-- **sans** `decoding="async"` : le décodage asynchrone de l'image LCP pouvait geler le premier paint sur Chrome mobile ;
 - `transform: translateZ(0)` sur `.fiche-pro-cover` : la cover est isolée dans son propre layer GPU, le reste de la fiche peint indépendamment ;
 - `history.scrollRestoration = 'manual'` + `window.scrollTo(0, 0)` : l'arrivée sur la fiche se fait toujours en haut de page.
 
@@ -153,7 +152,7 @@ HTML sémantique, rôles ARIA, navigation clavier, `aria-live` sur le compteur d
 | Requêtes SQL (cache hit) | ~85 | 0 |
 | Poids page annuaire (charge initiale) | ~25 Mo | ~3-4 Mo |
 | Poids fiche pro | ~3-5 Mo | ~600-800 Ko |
-| Conformité RGPD sans bannière | ❌ | ✅ |
+| Conformité RGPD sans bannière | Non | Oui |
 
 ---
 
