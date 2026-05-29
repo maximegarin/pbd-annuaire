@@ -1,16 +1,17 @@
 <?php
 /**
  * PBD — Page Pro JS
- * Carrousel photos (prev/next, dots, navigation clavier).
- * Copie presse-papier sur les liens CTA avec toast de confirmation.
- * Retry sur injection différée du HTML de la fiche.
- * (Aucune icône utilisée ici — pas de modif vs version 2.0)
+ * Carrousel photos, copie presse-papier, anti-téléchargement images.
  */
 add_action('wp_footer', function() {
     if (!is_singular('adherent')) return;
     ?>
     <script id="fiche-pro-js">
     (function() {
+
+        /* Empêche Chrome de restaurer un scroll en bas de page (fix paint mobile). */
+        if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+        window.scrollTo(0, 0);
 
         /* ---- COPIE PRESSE-PAPIER ---- */
         function initCopy() {

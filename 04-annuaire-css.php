@@ -29,7 +29,7 @@ add_action('wp_head', function() {
   display: flex;
   gap: 40px;
   align-items: flex-start;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 /* ================= ICÔNES SVG (base) ================= */
@@ -70,6 +70,10 @@ add_action('wp_head', function() {
   gap: 28px;
 }
 
+/* Avant exécution du JS : masque les cartes au-delà de la 1re page pour ne pas
+   charger les 84 covers (background-image) d'un coup → libère le main thread mobile. */
+.annuaire-grid--preload .annuaire-card:nth-child(n+13) { display: none; }
+
 /* ================= CARD ================= */
 .annuaire-card {
   background: var(--bg);
@@ -95,6 +99,7 @@ add_action('wp_head', function() {
   z-index: 1;
   text-indent: -9999px;
   overflow: hidden;
+  touch-action: manipulation; /* supprime le délai d'attente double-tap-zoom mobile */
 }
 
 .annuaire-card-link:focus-visible {
@@ -103,11 +108,18 @@ add_action('wp_head', function() {
   border-radius: 18px;
 }
 
-.annuaire-card-avatar-wrap,
 .annuaire-card-liens,
 .annuaire-card-liens a {
   position: relative;
   z-index: 2;
+}
+
+/* Le bloc logo est au-dessus du lien overlay : on laisse passer le tap vers le
+   lien de carte (sinon zone morte → 1er tap sans effet, ouverture au 2e/3e). */
+.annuaire-card-avatar-wrap {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* ================= COVER ================= */
@@ -163,6 +175,7 @@ add_action('wp_head', function() {
 
 /* ================= TEXT ================= */
 .annuaire-card-nom {
+  font-family: 'Syne', sans-serif;
   font-size: 16px;
   font-weight: 600;
   margin: 4px 0 6px;
@@ -454,7 +467,7 @@ add_action('wp_head', function() {
   color: #111;
   font-size: 14px;
   font-weight: 500;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -504,7 +517,7 @@ add_action('wp_head', function() {
   border-radius: 10px;
   font-size: 14px;
   font-weight: 500;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   color: #111;
   cursor: pointer;
   transition: background .2s ease, color .2s ease;
@@ -537,6 +550,8 @@ add_action('wp_head', function() {
 
 @media (max-width: 480px) {
   .annuaire-grid { grid-template-columns: 1fr; }
+  /* Box plus courte sur mobile : cover zoome moins -> montre plus de largeur. */
+  .annuaire-card-cover { height: 95px; }
 }
 
 </style>

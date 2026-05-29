@@ -25,7 +25,7 @@ add_action('wp_head', function() {
   --bg: #FFFFFF;
   --bg-soft: #F9FAFB;
 
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px 20px 80px;
@@ -78,11 +78,9 @@ add_action('wp_head', function() {
   background-color: var(--bg-soft);
   position: relative;
   overflow: hidden;
+  transform: translateZ(0); /* layer GPU isolé : fix paint mobile cover lourde */
 }
 
-/* Image cover en <img> natif (au lieu de background-image) :
-   permet au navigateur mobile de paint le reste de la page sans
-   attendre le download de l'image (corrige le bug d'affichage différé). */
 .fiche-pro-cover-img {
   width: 100%;
   height: 100%;
@@ -565,6 +563,9 @@ add_action('wp_head', function() {
 
 /* ================= RESPONSIVE ================= */
 @media (max-width: 600px) {
+  /* Box plus courte sur mobile : cover zoome moins -> montre plus de largeur
+     (logos/texte en bord de bannière) sans bandes vides. */
+  .fiche-pro-cover { height: 130px; }
   .fiche-pro-main { padding: 0 20px 24px; }
   .fiche-pro-header {
     flex-direction: column;

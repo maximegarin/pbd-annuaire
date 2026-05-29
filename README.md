@@ -33,7 +33,7 @@ L'annuaire existant — un plugin répertoire WordPress générique — présent
 | **Régularité de la grille** | Taille des cartes **variable selon le logo** → grille irrégulière, accentuée en responsive | Cartes à **dimensions fixes** (cover + avatar normalisés) → grille uniforme sur tous les écrans |
 | **Fiches vides** | Certaines cartes blanches (ni logo ni titre) | États vides gérés ("Informations à venir"), fallback initiales colorées |
 | **Responsive** | Layout bureau, adaptation mobile incertaine | Mobile-first, filtres repliables, grille fluide |
-| **Identité visuelle** | Design générique de plugin | Design system propre (Syne + DM Sans, palette, composants cohérents) |
+| **Identité visuelle** | Design générique de plugin | Design system propre (Syne + Inter, palette, composants cohérents) |
 | **Dépendances externes** | Material Icons + Font Awesome + Google Fonts (CDN) | **Zéro CDN** : SVG inline + fonts self-hostées (OMGF) |
 | **Performance** | Toutes les images chargées d'emblée | Cache HTML + lazy loading + images dimensionnées |
 
@@ -94,6 +94,8 @@ Les attributs `data-nom`, `data-ville`, `data-cat` sérialisés sur chaque carte
 
 Trade-off assumé : tout le HTML est dans le DOM initial (~60-80 Ko gzippé) en échange d'une réactivité totale du filtre.
 
+L'état du filtre et la page courante sont mémorisés (`sessionStorage`) : revenir à l'annuaire depuis une fiche pro réaffiche exactement la sélection et la page que le visiteur consultait. Sur mobile, toute la surface de la carte est cliquable — le tap sur le logo comme sur le reste de la carte ouvre la fiche, sans zone morte.
+
 ### 3. Optimisation d'images avec détection de hard-crop
 
 WordPress (ou un plugin de régénération) peut générer des tailles **hard-croppées** qui massacrent les logos rectangulaires. Un helper compare le ratio largeur/hauteur entre l'original et la taille générée, et ne sert la version optimisée que si elle préserve les proportions :
@@ -109,23 +111,23 @@ $pick_size = function($img, $size) {
 
 → Logos servis en `medium` (–75% de poids) quand c'est sûr, original sinon. Zéro logo recadré de travers.
 
-### 4. SSR de la fiche pro (résolution d'un bug de paint mobile)
+### 4. Rendu serveur de la fiche pro + maîtrise du paint mobile
 
-Le thème custom n'appelle pas `the_content()` sur les CPT. La première implémentation injectait le HTML via JS en `wp_footer` → **bug de paint sur Chrome/Safari mobile** : la page restait blanche jusqu'à un scroll, uniquement sur les fiches avec cover lourde.
+Le thème custom n'appelle pas `the_content()` sur les CPT : la fiche est rendue côté serveur via `template_redirect` (`get_header()` + HTML + `get_footer()`), le HTML est donc présent dès le premier byte de la réponse.
 
-Diagnostic itératif (cache, bfcache, prerender écartés un à un) → cause réelle : le navigateur mobile retardait le first paint en attendant le download de la cover en `background-image`.
+Une attention particulière a été portée au *first paint* sur Chrome/Safari mobile, sensible sur les fiches à cover lourde. La cover est traitée comme image LCP :
+- servie en `<img>` (et non `background-image`) avec `fetchpriority="high"` + `<link rel="preload">` + `width/height` (anti-CLS) ;
+- **sans** `decoding="async"` : le décodage asynchrone de l'image LCP pouvait geler le premier paint sur Chrome mobile ;
+- `transform: translateZ(0)` sur `.fiche-pro-cover` : la cover est isolée dans son propre layer GPU, le reste de la fiche peint indépendamment ;
+- `history.scrollRestoration = 'manual'` + `window.scrollTo(0, 0)` : l'arrivée sur la fiche se fait toujours en haut de page.
 
-Double correctif :
-- **Rendu serveur** via `template_redirect` (`get_header()` + HTML + `get_footer()`) : le HTML est dans la réponse, présent au premier byte.
-- **Cover + photos en `<img>`** (au lieu de `background-image`) + `fetchpriority="high"` + `<link rel="preload">` + `width/height` (anti-CLS) + `Cache-Control: no-store` (désactive le bfcache).
-
-Cas d'école de debug cross-navigateur où la cause finale n'était aucune des hypothèses initiales.
+Sur mobile, la hauteur de la cover est réduite pour limiter le recadrage horizontal des bannières larges — logos et texte placés sur les côtés restent visibles, sans recourir à des bandes.
 
 ### 5. Conformité RGPD : zéro dépendance externe
 
 Suppression de **Material Icons + Font Awesome + Google Fonts** (toutes des requêtes vers des CDN US qui exposent l'IP des visiteurs) :
 - Icônes → **SVG inline** via `pbd_icon()` (~130 Ko → ~5 Ko)
-- Fonts (Syne, DM Sans) → self-hostées via OMGF
+- Fonts (Syne, Inter) → self-hostées via OMGF
 
 → Aucune fuite de données visiteur vers un tiers, cohérent avec l'identité "numérique responsable" du cluster.
 

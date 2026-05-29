@@ -1,19 +1,8 @@
 <?php
 /**
  * PBD — Page Pro SHORTCODE [page_pro]
- * Fiche détaillée adhérent : cover, logo, catégories, infos, tags,
- * description, verbatim, carrousel photos.
- * Injection JS dans le <main> du thème (quand the_content() n'est pas appelé).
- * Icônes : SVG inline via helper pbd_icon() défini dans snippet 01.
- *
- * OPTIMISATIONS PERF (v2.1+) :
- *  - Cache HTML transient 1h PAR adhérent (clé : pbd_fiche_pro_html_v1_{$post_id})
- *  - Bypass cache pour utilisateurs connectés (admin voit toujours frais)
- *  - Logo : detection du hard-crop pour préserver les logos rectangulaires
- *  - Cover : taille large (1024px) au lieu de l'originale
- *  - Photos ambiance : taille large (1024px) au lieu de l'originale
- *  - Attributs width/height + decoding async sur le logo (anti CLS)
- *  - Anti-téléchargement (friction) sur cover + photos d'ambiance via data-protected
+ * Fiche détaillée adhérent, rendue côté serveur via template_redirect.
+ * Cache HTML transient 1h par adhérent, bypass admin, détection hard-crop sur les images.
  */
 function pbd_get_fiche_pro_html($post_id) {
 
@@ -87,12 +76,14 @@ function pbd_get_fiche_pro_html($post_id) {
         return $img['url'];
     };
 
-    // Logo  : medium (300px)   — fallback URL d'origine si hard-crop
-    // Cover : large  (1024px)  — fallback URL d'origine si hard-crop
-    $logo_src  = $pick_size($logo,  'medium');
-    // Cover : medium_large (768px) — divisé par ~2 vs large pour réduire le poids
-    //         + résoudre le bug de paint mobile sur les fiches avec cover lourde
-    $cover_src = $pick_size($cover, 'medium_large');
+    // Logo : medium (300px) — fallback URL d'origine si hard-crop (object-fit: contain).
+    $logo_src  = $pick_size($logo, 'medium');
+    // Cover : taille bornée TOUJOURS (object-fit: cover recadre déjà côté CSS).
+    //         Pas de fallback original : évite de servir une image 2-3 Mo et la lenteur
+    //         de navigation. Source identique au preload (wp_head) pour ne pas charger 2 fois.
+    $cover_src = ($cover['sizes']['medium_large'] ?? null)
+                 ?: ($cover['sizes']['large'] ?? null)
+                 ?: ($cover['url'] ?? '');
 
     $url_annuaire = home_url('/annuaire/');
 
@@ -331,7 +322,10 @@ function pbd_get_fiche_pro_html($post_id) {
                             <div class="fiche-pro-carrousel-track" id="fiche-track">
                                 <?php foreach ($photos as $index => $photo):
                                     $alt = !empty($photo['alt']) ? $photo['alt'] : 'Photo d\'ambiance ' . ($index + 1);
-                                    $photo_src = $pick_size($photo, 'large');
+                                    // Taille bornée (object-fit: cover recadre côté CSS) — pas de fallback original.
+                                    $photo_src = ($photo['sizes']['large'] ?? null)
+                                                 ?: ($photo['sizes']['medium_large'] ?? null)
+                                                 ?: ($photo['url'] ?? '');
                                 ?>
                                     <div class="fiche-pro-slide <?= $index === 0 ? 'active' : '' ?>"
                                          data-protected="true"
@@ -387,30 +381,20 @@ add_shortcode('page_pro', function($atts) {
     return pbd_get_fiche_pro_html(get_the_ID());
 });
 
-// Enqueue des fonts sur le single CPT adherent
-// (Material Icons + Font Awesome remplacés par SVG inline → plus de wp_enqueue_style pour eux)
+// Fonts (Syne, Inter) : enqueue intercepté par OMGF qui sert le local (RGPD OK).
 add_action('wp_enqueue_scripts', function() {
     if (!is_singular('adherent')) return;
-
-    wp_enqueue_style('syne-font',    'https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&display=swap', [], null);
-    wp_enqueue_style('dm-sans-font', 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap', [], null);
+    wp_enqueue_style('syne-font',  'https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&display=swap', [], null);
+    wp_enqueue_style('inter-font', 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap', [], null);
 });
 
-// ============================================================
-// PRELOAD DE LA COVER dans le <head> de la fiche pro
-// Force le navigateur à télécharger la cover en priorité maximale
-// dès qu'il découvre le <head>, avant même de parser le <body>.
-// → Résout le bug de paint mobile : la cover arrive plus vite,
-//   donc le first paint n'est plus retardé.
-// ============================================================
+// Preload de la cover (image LCP) en priorité maximale.
 add_action('wp_head', function() {
     if (!is_singular('adherent')) return;
 
     $cover = get_field('cover', get_the_ID());
     if (!$cover) return;
 
-    // Même logique pick_size que dans le shortcode (sans le hard-crop check
-    // car ici on veut juste la bonne taille pour le preload, le rendu utilise sa propre logique)
     $cover_src = $cover['sizes']['medium_large']
                  ?? $cover['sizes']['large']
                  ?? $cover['url'];
@@ -418,51 +402,19 @@ add_action('wp_head', function() {
     echo '<link rel="preload" as="image" href="' . esc_url($cover_src) . '" fetchpriority="high">' . "\n";
 }, 2);
 
-// ============================================================
-// RENDU SERVEUR (SSR) DE LA FICHE PRO
-// On intercepte la requête sur les singles CPT adherent et on génère
-// directement la page complète : header.php du thème + notre HTML + footer.php.
-// → Le HTML est dans la réponse serveur, présent au premier paint.
-// → Élimine définitivement le bug de paint mobile qu'on avait avec l'injection JS.
-// → Skip le single.php du thème (qui de toute façon n'appelait pas the_content
-//   sur les CPT adherent, donc on ne perd rien).
-// ============================================================
+// SSR de la fiche : le thème n'appelle pas the_content() sur les CPT.
+// Pas de no-store : on laisse le bfcache/cache navigateur actif (retour + revisite
+// instantanés). La fraîcheur est assurée par le cache transient serveur + invalidation.
 add_action('template_redirect', function() {
     if (!is_singular('adherent')) return;
 
-    // Headers anti-cache (bfcache inclus)
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Pragma: no-cache');
-
-    // Output : header thème → fiche → footer thème
     get_header();
     echo pbd_get_fiche_pro_html(get_the_ID());
     get_footer();
     exit;
 });
 
-// ============================================================
-// CACHE-CONTROL HEADERS sur les pages adhérents
-// Empêche le navigateur (Chrome Android notamment) de mettre en cache
-// le HTML des fiches pro entre les déploiements.
-// → Évite les désynchros entre snippet mis à jour côté serveur et
-//   ancien HTML servi depuis le cache disque du navigateur.
-// → Les CSS/JS/images restent cachés normalement (Cache-Control ne touche que ce HTML).
-// → Côté serveur, le transient répond en quelques ms : impact perf quasi nul.
-// ============================================================
-add_action('send_headers', function() {
-    if (!is_singular('adherent')) return;
-    // no-store : désactive aussi le bfcache (back-forward cache) de Chrome/Safari
-    //            qui est SÉPARÉ du cache disque et survit aux "Effacer les données"
-    //            → résout le bug de paint mobile quand on arrive depuis l'annuaire
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Pragma: no-cache');
-});
-
-// ============================================================
-// INVALIDATION AUTOMATIQUE DU CACHE PAR ADHÉRENT
-// Vide le cache transient de la fiche concernée quand elle change d'état
-// ============================================================
+// Invalidation du cache transient par adhérent sur changement d'état.
 add_action('save_post_adherent', function($post_id) {
     delete_transient('pbd_fiche_pro_html_v1_' . $post_id);
 });

@@ -11,6 +11,14 @@
  *  - Lazy loading natif + decoding async sur les <img>
  *  - Attributs width/height sur les images pour éviter le CLS (layout shift)
  */
+
+// Fonts (Syne, Inter) : enqueue intercepté par OMGF qui sert le local (RGPD OK).
+// IMPORTANT : ne pas supprimer — OMGF a besoin de ces enqueues pour servir les fonts en local.
+add_action('wp_enqueue_scripts', function() {
+    wp_enqueue_style('syne-font',  'https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&display=swap', [], null);
+    wp_enqueue_style('inter-font', 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap', [], null);
+});
+
 add_shortcode('annuaire', function($atts) {
 
     // ============================================================
@@ -36,10 +44,6 @@ add_shortcode('annuaire', function($atts) {
         'iot-industrie'           => 'Objets connectés et industrie',
         'ecommerce-marketplace'   => 'E-commerce et marketplace',
     ];
-
-    // Enqueue des fonts (servies en local via OMGF)
-    wp_enqueue_style('syne-font',    'https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700&display=swap', [], null);
-    wp_enqueue_style('dm-sans-font', 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap', [], null);
 
     $adherents = new WP_Query([
         'post_type'      => 'adherent',
@@ -144,7 +148,7 @@ add_shortcode('annuaire', function($atts) {
                 </p>
             </div>
 
-            <div class="annuaire-grid" id="annuaire-grid">
+            <div class="annuaire-grid annuaire-grid--preload" id="annuaire-grid">
             <?php
             $covers = [
                 'annuaire-cover-1','annuaire-cover-2','annuaire-cover-3','annuaire-cover-4',

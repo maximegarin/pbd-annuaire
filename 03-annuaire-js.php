@@ -35,6 +35,23 @@ add_action('wp_footer', function() {
         var currentPage = 0;
         var filtered    = [];
 
+        /* ---- ÉTAT PERSISTÉ (retour depuis une fiche → on retrouve filtres + page) ---- */
+        var STORAGE_KEY = 'pbd_annuaire_state';
+        function saveState() {
+            try {
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    nom: inputNom ? inputNom.value : '',
+                    cat: activeCat,
+                    ville: activeVille,
+                    page: currentPage
+                }));
+            } catch (e) {}
+        }
+        function loadState() {
+            try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY)) || null; }
+            catch (e) { return null; }
+        }
+
         /* ---- FILTRAGE ---- */
         function applyFilter() {
             var term = (inputNom ? inputNom.value : '').toLowerCase().trim();
@@ -54,6 +71,7 @@ add_action('wp_footer', function() {
 
             currentPage = 0;
             renderPage();
+            saveState();
         }
 
         /* ---- PAGINATION ---- */
@@ -124,6 +142,7 @@ add_action('wp_footer', function() {
             if (page < 0 || page >= totalPages) return;
             currentPage = page;
             renderPage();
+            saveState();
             // Remonte tout en haut de la page (au-dessus du header sticky du thème)
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -207,8 +226,33 @@ add_action('wp_footer', function() {
             if (e.target.closest('[data-protected]')) e.preventDefault();
         });
 
-        // Init
+        // Init — restaure l'état précédent (filtres + page) au retour depuis une fiche.
+        var saved = loadState();
+        if (saved) {
+            if (inputNom && saved.nom) inputNom.value = saved.nom;
+            activeCat   = saved.cat   || '';
+            activeVille = saved.ville || '';
+            pillsCat.forEach(function(p) {
+                if ((p.getAttribute('data-cat') || '') === activeCat) setActivePill(pillsCat, p);
+            });
+            pillsVille.forEach(function(p) {
+                if ((p.getAttribute('data-ville') || '') === activeVille) setActivePill(pillsVille, p);
+            });
+        }
+
+        // Retire le masque preload (CSS) puis pagine : seules 12 covers chargent.
+        grid.classList.remove('annuaire-grid--preload');
         applyFilter();
+
+        // Restaure la page courante après le filtrage (applyFilter repart à 0).
+        if (saved && saved.page > 0) {
+            var totalPages = Math.ceil(filtered.length / PER_PAGE);
+            if (saved.page < totalPages) {
+                currentPage = saved.page;
+                renderPage();
+            }
+            saveState();
+        }
     })();
     </script>
     <?php
